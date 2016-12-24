@@ -20,11 +20,18 @@ public class HtmlUnitSpiderPreparations implements SpiderPreparations<String, We
         LOGGER.debug("Executing preparation for [" + url + "]");
 
         final WebClient webClient = new WebClient();
+
+        webClient.setJavaScriptErrorListener(null);
+        webClient.setAjaxController(new NicelyResynchronizingAjaxController());
+        webClient.setJavaScriptTimeout(500);
+        webClient.waitForBackgroundJavaScript(490);
+
         WebClientOptions options = webClient.getOptions();
 
         options.setRedirectEnabled(true);
         options.setJavaScriptEnabled(true);
         options.setCssEnabled(true);
+        options.setUseInsecureSSL(true);
 
         options.setThrowExceptionOnScriptError(false);
         options.setThrowExceptionOnFailingStatusCode(false);
