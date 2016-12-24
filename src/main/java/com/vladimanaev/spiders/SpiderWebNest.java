@@ -8,7 +8,7 @@ import com.vladimanaev.spiders.model.Results;
  * Time: 1:40 AM
  * Copyright VMSR
  */
-public interface SpiderWebNest<R, M> extends AutoCloseable {
+public interface SpiderWebNest<R> extends AutoCloseable {
 
     Results<R> crawl(String url) throws Exception;
 

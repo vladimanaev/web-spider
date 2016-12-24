@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Copyright VMSR
  */
 @NotThreadSafe
-public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebNest<R, P> {
+public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebNest<R> {
 
     private static final Logger LOGGER = Logger.getLogger(SpiderWebNestImpl.class);
 
@@ -62,7 +62,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
     @Override
     public Results<R> crawl(String rootUrl) throws Exception {
         final long startTime = System.currentTimeMillis();
-        LOGGER.info("Crawling [" + rootUrl + "]");
+        LOGGER.info("Crawling root url [" + rootUrl + "]");
         rootDomainName = SpidersUtils.getDomainName(rootUrl);
         if(StringUtils.isEmpty(rootDomainName)) {
             LOGGER.warn("Unable to extract domain from given root URL");
@@ -77,7 +77,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
             LOGGER.debug("Queue [" + urlsQueue + "]");
 
             if(crawlIterations.get() == maxCrawlIterations) {
-                LOGGER.info("Reached defined crawl depth [" + maxCrawlIterations + "]");
+                LOGGER.info("Reached defined crawl iterations [" + maxCrawlIterations + "]");
                 break;
             }
 
@@ -110,6 +110,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
             }
 
             visitedUrls.add(nextUrl);
+            LOGGER.info("Creating spider with url [" + nextUrl + "]");
             spiders.add(new Spider<>(rootDomainName, nextUrl, spiderPreparations, spiderLogic));
             i++;
         }
