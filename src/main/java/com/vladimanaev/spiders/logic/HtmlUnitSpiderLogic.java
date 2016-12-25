@@ -59,6 +59,7 @@ public class HtmlUnitSpiderLogic implements SpiderLogic<String, WebClient, Spide
             DomNodeList<DomElement> elements = page.getElementsByTagName("a");
             for(DomElement currEle : elements) {
                 String newURL = currEle.getAttribute("href");
+                newURL = SpidersUtils.fixUrl(rootDomainName, newURL);
                 String newDomain = SpidersUtils.getDomainNameNoException(newURL);
                 if(SpidersUtils.isSameDomain(newDomain, rootDomainName)) {
                     nextUrls.add(newURL);

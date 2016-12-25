@@ -39,12 +39,10 @@ public class Spider<P extends AutoCloseable, R> implements Callable<SpiderResult
     public SpiderResult<R> call() throws Exception {
         final long startTime = System.currentTimeMillis();
         LOGGER.debug("Spider starting to work");
-        P preparationResult = preparation.execute(url);
-        try {
+        try (P preparationResult = preparation.execute(url)) {
             return logic.execute(rootDomainName, url, preparationResult);
         } finally {
-            LOGGER.debug("Spider done working over [" + url + "], took [" + ((System.currentTimeMillis() - startTime)/1000) + "s]");
-            preparationResult.close();
+            LOGGER.debug("Spider done working over [" + url + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
         }
     }
 }

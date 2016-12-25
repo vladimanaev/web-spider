@@ -33,4 +33,22 @@ public class SpidersUtils {
     public static boolean isSameDomain(String domain1, String domain2) {
         return StringUtils.containsIgnoreCase(domain1, domain2) || StringUtils.containsIgnoreCase(domain2, domain1);
     }
+
+    public static String fixUrl(String domain, String url) {
+        if(url.startsWith("//")) {
+            //relative protocol
+            url = "http:" + url;
+        } else if(url.startsWith("/")) {
+            //relative url from root
+            url = "http://" + domain + (url.startsWith("/") ? url : ("/" + url));
+        } else if(!url.contains(".")) {
+            //relative url
+            url = "http://" + domain + "/" + url;
+        } else if (!url.startsWith("http")) {
+            //url without protocol
+            url = "http://" + url;
+        }
+
+        return url;
+    }
 }

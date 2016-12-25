@@ -134,7 +134,11 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
                 result.getNextUrls().stream()
                                 .map(curr-> StringUtils.removeEnd(curr, "/"))
                                 .forEach(urlsQueue::add);
-                results.update(result.getUrl(), result.getFindings());
+
+                R findings = result.getFindings();
+                if(findings != null) {
+                    results.update(result.getUrl(), findings);
+                }
             });
 
         } catch (Exception e) {

@@ -23,4 +23,24 @@ public class SpidersUtilsTest {
         assertNull("Extracted invalid domain from URL", SpidersUtils.getDomainNameNoException("vladimanaev.com"));
         assertNull("Extracted invalid domain from URL", SpidersUtils.getDomainNameNoException("asfasfasg"));
     }
+
+    @Test
+    public void testFixUrlProtocol() {
+        assertEquals("Invalid fixed URL", "http://example.com", SpidersUtils.fixUrl("example.com", "example.com"));
+
+        //different domain
+        assertEquals("Invalid fixed URL", "http://example.com/vladi/test/path", SpidersUtils.fixUrl("example1.com", "//example.com/vladi/test/path"));
+        assertEquals("Invalid fixed URL", "http://example.com/vladi/test/path", SpidersUtils.fixUrl("example1.com", "example.com/vladi/test/path"));
+        assertEquals("Invalid fixed URL", "http://www.example.com/vladi/test/path", SpidersUtils.fixUrl("example1.com", "www.example.com/vladi/test/path"));
+
+        //same domain
+        assertEquals("Invalid fixed URL", "http://example.com/vladi/test/path", SpidersUtils.fixUrl("example.com", "//example.com/vladi/test/path"));
+        assertEquals("Invalid fixed URL", "http://example.com/vladi/test/path", SpidersUtils.fixUrl("example.com", "example.com/vladi/test/path"));
+
+        //same domain relative paths
+        assertEquals("Invalid fixed URL", "http://example.com/vladi/test/path", SpidersUtils.fixUrl("example.com", "/vladi/test/path"));
+        assertEquals("Invalid fixed URL", "http://example.com/vladi/test/path", SpidersUtils.fixUrl("example.com", "vladi/test/path"));
+        assertEquals("Invalid fixed URL", "http://www.example.com/vladi/test/path", SpidersUtils.fixUrl("example.com", "//www.example.com/vladi/test/path"));
+        assertEquals("Invalid fixed URL", "http://www.example.com/vladi/test/path", SpidersUtils.fixUrl("example.com", "www.example.com/vladi/test/path"));
+    }
 }
