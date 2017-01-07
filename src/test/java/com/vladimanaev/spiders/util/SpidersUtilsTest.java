@@ -1,6 +1,5 @@
-package com.vladimanaev.util;
+package com.vladimanaev.spiders.util;
 
-import com.vladimanaev.spiders.util.SpidersUtils;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
