@@ -2,7 +2,6 @@ package com.vladimanaev.spiders.model;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * Created by Vladi
@@ -49,7 +48,7 @@ public class Results<V> {
 
     @Override
     public String toString() {
-        return "CrawlerResults{" +
+        return "Results{" +
         "results=" + results +
         '}';
     }
