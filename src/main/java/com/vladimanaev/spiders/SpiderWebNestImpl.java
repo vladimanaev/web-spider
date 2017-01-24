@@ -2,7 +2,7 @@ package com.vladimanaev.spiders;
 
 import com.vladimanaev.spiders.logic.SpiderLogic;
 import com.vladimanaev.spiders.preparations.SpiderPreparations;
-import com.vladimanaev.spiders.model.Results;
+import com.vladimanaev.spiders.model.NestResult;
 import com.vladimanaev.spiders.model.SpiderResult;
 import com.vladimanaev.spiders.util.SpidersUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -40,14 +40,14 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
     private final SpiderPreparations<String, P> spiderPreparations;
     private final SpiderLogic<String, P, SpiderResult<R>> spiderLogic;
 
-    private Results<R> results;
+    private NestResult<R> nestResult;
     private String rootDomainName;
 
     public SpiderWebNestImpl(int nestSize, int maxCrawlIterations, int spiderWorkTimeout, TimeUnit spiderWorkTimeoutUnit,
                              SpiderPreparations<String, P> spiderPreparations,
                              SpiderLogic<String, P, SpiderResult<R>> spiderLogic) {
 
-        this.results = new Results<>();
+        this.nestResult = new NestResult<>();
         this.nestExecutorService = Executors.newFixedThreadPool(nestSize);
         this.urlsQueue = new ConcurrentLinkedQueue<>();
         this.visitedUrls = new ConcurrentHashSet<>();
@@ -60,13 +60,13 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
     }
 
     @Override
-    public Results<R> crawl(String rootUrl) throws Exception {
+    public NestResult<R> crawl(String rootUrl) throws Exception {
         final long startTime = System.currentTimeMillis();
         LOGGER.info("Crawling root url [" + rootUrl + "]");
         rootDomainName = SpidersUtils.getDomainName(rootUrl);
         if(StringUtils.isEmpty(rootDomainName)) {
             LOGGER.warn("Unable to extract domain from given root URL");
-            return results;
+            return nestResult;
         }
 
         final AtomicInteger crawlIterations = new AtomicInteger(0);
@@ -92,7 +92,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
         }
 
         LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
-        return results;
+        return nestResult;
     }
 
     private List<Spider<P, R>> prepareSpidersForWork() {
@@ -137,7 +137,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
 
                 R findings = result.getFindings();
                 if(findings != null) {
-                    results.update(result.getUrl(), findings);
+                    nestResult.update(result.getUrl(), findings);
                 }
             });
 

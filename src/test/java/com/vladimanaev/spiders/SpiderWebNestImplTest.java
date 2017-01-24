@@ -5,7 +5,7 @@ import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.vladimanaev.spiders.logic.HtmlUnitSpiderLogic;
-import com.vladimanaev.spiders.model.Results;
+import com.vladimanaev.spiders.model.NestResult;
 import com.vladimanaev.spiders.preparations.HtmlUnitSpiderPreparations;
 import com.vladimanaev.spiders.search.HtmlUnitSpiderSearchLogic;
 import org.apache.commons.lang3.StringUtils;
@@ -39,8 +39,8 @@ public class SpiderWebNestImplTest {
         SpiderWebNestImpl<Collection, WebClient> spiderWebNest = new SpiderWebNestImpl<>(1, 1, 5, TimeUnit.SECONDS, new HtmlUnitSpiderPreparations(), spiderLogic);
 
         String rootUrl = "http://www.google.com";
-        Results<Collection> results = spiderWebNest.crawl(rootUrl);
-        Map<String, Collection> resultsMap = results.getAll();
+        NestResult<Collection> nestResult = spiderWebNest.crawl(rootUrl);
+        Map<String, Collection> resultsMap = nestResult.getAll();
 
         // Asserting results
         assertEquals("Invalid number of URL results", 1, resultsMap.size());

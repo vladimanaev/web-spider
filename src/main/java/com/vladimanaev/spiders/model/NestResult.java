@@ -9,11 +9,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * Time: 1:43 AM
  * Copyright VMSR
  */
-public class Results<V> {
+public class NestResult<V> {
 
     private final Map<String, V> results;
 
-    public Results() {
+    public NestResult() {
         results = new ConcurrentHashMap<>();
     }
 
@@ -34,9 +34,9 @@ public class Results<V> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        Results results1 = (Results) o;
+        NestResult nestResult1 = (NestResult) o;
 
-        if (results != null ? !results.equals(results1.results) : results1.results != null) return false;
+        if (results != null ? !results.equals(nestResult1.results) : nestResult1.results != null) return false;
 
         return true;
     }
@@ -48,7 +48,7 @@ public class Results<V> {
 
     @Override
     public String toString() {
-        return "Results{" +
+        return "NestResult{" +
         "results=" + results +
         '}';
     }
