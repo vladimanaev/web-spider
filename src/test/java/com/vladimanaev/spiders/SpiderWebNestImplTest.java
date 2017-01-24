@@ -6,6 +6,7 @@ import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.vladimanaev.spiders.logic.HtmlUnitSpiderLogic;
 import com.vladimanaev.spiders.model.NestResult;
+import com.vladimanaev.spiders.model.SpiderResultsDetails;
 import com.vladimanaev.spiders.preparations.HtmlUnitSpiderPreparations;
 import com.vladimanaev.spiders.search.HtmlUnitSpiderSearchLogic;
 import org.apache.commons.lang3.StringUtils;
@@ -15,7 +16,6 @@ import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -35,19 +35,19 @@ public class SpiderWebNestImplTest {
     public void testGeneralHtmlUnitHappyFlow() throws Exception {
         String expectedSearchStr = "google";
         TitleAndNetworkSearchLogic titleAndNetworkSearchLogic = new TitleAndNetworkSearchLogic(Collections.singleton(expectedSearchStr));
-        HtmlUnitSpiderLogic spiderLogic = new HtmlUnitSpiderLogic(titleAndNetworkSearchLogic);
-        SpiderWebNestImpl<Collection, WebClient> spiderWebNest = new SpiderWebNestImpl<>(1, 1, 5, TimeUnit.SECONDS, new HtmlUnitSpiderPreparations(), spiderLogic);
+        HtmlUnitSpiderLogic<String> spiderLogic = new HtmlUnitSpiderLogic<>(titleAndNetworkSearchLogic);
+        SpiderWebNestImpl<String, WebClient> spiderWebNest = new SpiderWebNestImpl<>(1, 1, 5, TimeUnit.SECONDS, new HtmlUnitSpiderPreparations(), spiderLogic);
 
         String rootUrl = "http://www.google.com";
-        NestResult<Collection> nestResult = spiderWebNest.crawl(rootUrl);
-        Map<String, Collection> resultsMap = nestResult.getAll();
+        NestResult<SpiderResultsDetails<String>> nestResult = spiderWebNest.crawl(rootUrl);
+        Map<String, SpiderResultsDetails<String>> resultsMap = nestResult.getAll();
 
         // Asserting results
         assertEquals("Invalid number of URL results", 1, resultsMap.size());
         resultsMap.forEach((url, foundStr) -> {
             assertEquals("Invalid searched URL", rootUrl, url);
             assertNotNull("Couldn't find expected results", foundStr);
-            for(Object currStr : foundStr) {
+            for(Object currStr : foundStr.getDetails()) {
                 assertThat("Found invalid strings", currStr, new BaseMatcher<Object>() {
                     @Override
                     public void describeTo(Description description) { }
@@ -65,13 +65,10 @@ public class SpiderWebNestImplTest {
     /**
      * Simple searches from resources HTTP calls and string in title
      */
-    private class TitleAndNetworkSearchLogic extends HtmlUnitSpiderSearchLogic {
-
-        private Collection<String> results;
+    private class TitleAndNetworkSearchLogic extends HtmlUnitSpiderSearchLogic<String> {
 
         TitleAndNetworkSearchLogic(Collection<String> searchFor) {
             super(searchFor);
-            results = new LinkedList<>();
         }
 
         @Override
@@ -97,7 +94,7 @@ public class SpiderWebNestImplTest {
         }
 
         @Override
-        public Collection<String> results() {
+        public SpiderResultsDetails<String> results() {
             return results;
         }
     }

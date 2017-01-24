@@ -8,6 +8,7 @@ import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.DomNodeList;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.vladimanaev.spiders.model.SpiderResult;
+import com.vladimanaev.spiders.model.SpiderResultsDetails;
 import com.vladimanaev.spiders.search.HtmlUnitSpiderSearchLogic;
 import com.vladimanaev.spiders.util.SpidersUtils;
 import org.apache.http.annotation.ThreadSafe;
@@ -23,17 +24,17 @@ import java.util.*;
  * Copyright VMSR
  */
 @ThreadSafe
-public class HtmlUnitSpiderLogic implements SpiderLogic<String, WebClient, SpiderResult<Collection>> {
+public class HtmlUnitSpiderLogic<D> implements SpiderLogic<String, WebClient, SpiderResult<SpiderResultsDetails<D>>> {
 
     private static final Logger LOGGER = Logger.getLogger(HtmlUnitSpiderLogic.class);
-    private final HtmlUnitSpiderSearchLogic spiderSearchLogic;
+    private final HtmlUnitSpiderSearchLogic<D> spiderSearchLogic;
 
-    public HtmlUnitSpiderLogic(HtmlUnitSpiderSearchLogic spiderSearchLogic) {
+    public HtmlUnitSpiderLogic(HtmlUnitSpiderSearchLogic<D> spiderSearchLogic) {
         this.spiderSearchLogic = spiderSearchLogic;
     }
 
     @Override
-    public SpiderResult<Collection> execute(String rootDomainName, String url, WebClient preparation) {
+    public SpiderResult<SpiderResultsDetails<D>> execute(String rootDomainName, String url, WebClient preparation) {
         LOGGER.debug("Executing logic for [" + rootDomainName + "] and url [" + url + "]");
 
         final WebConnection webConnection = preparation.getWebConnection();
@@ -69,6 +70,7 @@ public class HtmlUnitSpiderLogic implements SpiderLogic<String, WebClient, Spide
             LOGGER.warn("Failed to request page for [" + url + "]");
         }
 
-        return new SpiderResult<>(url, spiderSearchLogic.results(), nextUrls);
+        SpiderResultsDetails<D> results = spiderSearchLogic.results();
+        return new SpiderResult<>(url, results == null || results.isEmpty() ? null : results, nextUrls);
     }
 }

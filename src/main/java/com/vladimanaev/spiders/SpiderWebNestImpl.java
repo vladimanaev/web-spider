@@ -1,6 +1,7 @@
 package com.vladimanaev.spiders;
 
 import com.vladimanaev.spiders.logic.SpiderLogic;
+import com.vladimanaev.spiders.model.SpiderResultsDetails;
 import com.vladimanaev.spiders.preparations.SpiderPreparations;
 import com.vladimanaev.spiders.model.NestResult;
 import com.vladimanaev.spiders.model.SpiderResult;
@@ -24,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Copyright VMSR
  */
 @NotThreadSafe
-public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebNest<R> {
+public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebNest<D> {
 
     private static final Logger LOGGER = Logger.getLogger(SpiderWebNestImpl.class);
 
@@ -38,14 +39,14 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
     private final TimeUnit spiderWorkTimeoutUnit;
 
     private final SpiderPreparations<String, P> spiderPreparations;
-    private final SpiderLogic<String, P, SpiderResult<R>> spiderLogic;
+    private final SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic;
 
-    private NestResult<R> nestResult;
+    private NestResult<SpiderResultsDetails<D>> nestResult;
     private String rootDomainName;
 
     public SpiderWebNestImpl(int nestSize, int maxCrawlIterations, int spiderWorkTimeout, TimeUnit spiderWorkTimeoutUnit,
                              SpiderPreparations<String, P> spiderPreparations,
-                             SpiderLogic<String, P, SpiderResult<R>> spiderLogic) {
+                             SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic) {
 
         this.nestResult = new NestResult<>();
         this.nestExecutorService = Executors.newFixedThreadPool(nestSize);
@@ -60,7 +61,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
     }
 
     @Override
-    public NestResult<R> crawl(String rootUrl) throws Exception {
+    public NestResult<SpiderResultsDetails<D>> crawl(String rootUrl) throws Exception {
         final long startTime = System.currentTimeMillis();
         LOGGER.info("Crawling root url [" + rootUrl + "]");
         rootDomainName = SpidersUtils.getDomainName(rootUrl);
@@ -86,7 +87,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
                 break;
             }
 
-            List<Spider<P, R>> spiders = prepareSpidersForWork();
+            List<Spider<P, SpiderResultsDetails<D>>> spiders = prepareSpidersForWork();
             sendSpidersToWork(spiders);
             crawlIterations.incrementAndGet();
         }
@@ -95,9 +96,9 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
         return nestResult;
     }
 
-    private List<Spider<P, R>> prepareSpidersForWork() {
+    private List<Spider<P, SpiderResultsDetails<D>>> prepareSpidersForWork() {
         LOGGER.debug("Preparing spiders for the work");
-        List<Spider<P, R>> spiders = new ArrayList<>();
+        List<Spider<P, SpiderResultsDetails<D>>> spiders = new ArrayList<>();
         int i = 0;
         while(i < nestSize) {
             String nextUrl = urlsQueue.poll();
@@ -119,7 +120,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
         return spiders;
     }
 
-    private void sendSpidersToWork(List<Spider<P, R>> spiders) {
+    private void sendSpidersToWork(List<Spider<P, SpiderResultsDetails<D>>> spiders) {
         try {
             LOGGER.debug("Sending spiders to work");
             nestExecutorService.invokeAll(spiders).stream().map(future -> {
@@ -135,7 +136,7 @@ public class SpiderWebNestImpl<R, P extends AutoCloseable> implements SpiderWebN
                                 .map(curr-> StringUtils.removeEnd(curr, "/"))
                                 .forEach(urlsQueue::add);
 
-                R findings = result.getFindings();
+                SpiderResultsDetails<D> findings = result.getFindings();
                 if(findings != null) {
                     nestResult.update(result.getUrl(), findings);
                 }

@@ -1,6 +1,7 @@
 package com.vladimanaev.spiders;
 
 import com.vladimanaev.spiders.model.NestResult;
+import com.vladimanaev.spiders.model.SpiderResultsDetails;
 
 /**
  * Created by Vladi
@@ -8,8 +9,8 @@ import com.vladimanaev.spiders.model.NestResult;
  * Time: 1:40 AM
  * Copyright VMSR
  */
-public interface SpiderWebNest<R> extends AutoCloseable {
+public interface SpiderWebNest<D> extends AutoCloseable {
 
-    NestResult<R> crawl(String url) throws Exception;
+    NestResult<SpiderResultsDetails<D>> crawl(String url) throws Exception;
 
 }
