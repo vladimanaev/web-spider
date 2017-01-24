@@ -124,14 +124,20 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         try {
             LOGGER.debug("Sending spiders to work");
             nestExecutorService.invokeAll(spiders).stream().map(future -> {
-
+                SpiderResult<SpiderResultsDetails<D>> futureResult = null;
                 try {
-                    return future.get(spiderWorkTimeout, spiderWorkTimeoutUnit);
+                    futureResult = future.get(spiderWorkTimeout, spiderWorkTimeoutUnit);
                 } catch (Exception e) {
-                    throw new IllegalStateException("Failure during future", e);
+                    LOGGER.warn("Failed during work", e);
                 }
 
+                return futureResult;
+
             }).forEach(result -> {
+                if(result == null) {
+                    return;
+                }
+
                 result.getNextUrls().stream()
                                 .map(curr-> StringUtils.removeEnd(curr, "/"))
                                 .forEach(urlsQueue::add);
