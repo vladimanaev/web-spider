@@ -89,6 +89,8 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                 addSpiderWork(rootDomainName, nextUpURL);
             }
 
+            nestQueenResting();
+
             for(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork : spidersAtWork) {
 
                 if(spiderWork.isDone()) {
@@ -110,8 +112,6 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                     }
                 }
             }
-
-            nestQueenResting();
         }
 
         interruptSpidersWork();
