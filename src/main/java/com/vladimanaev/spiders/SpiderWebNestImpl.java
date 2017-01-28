@@ -7,12 +7,9 @@ import com.vladimanaev.spiders.model.NestResult;
 import com.vladimanaev.spiders.model.SpiderResult;
 import com.vladimanaev.spiders.util.SpidersUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.http.annotation.NotThreadSafe;
 import org.apache.log4j.Logger;
 import org.eclipse.jetty.util.ConcurrentHashSet;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -24,36 +21,37 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Time: 1:55 AM
  * Copyright VMSR
  */
-@NotThreadSafe
 public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebNest<D> {
 
     private static final Logger LOGGER = Logger.getLogger(SpiderWebNestImpl.class);
 
     private final ExecutorService nestExecutorService;
     private final Queue<String> urlsQueue;
+    private final Queue<Future<SpiderResult<SpiderResultsDetails<D>>>> spidersAtWork;
     private final Set<String> visitedUrls;
 
     private final int nestSize;
-    private final int maxCrawlIterations;
+    private final int maxCrawledURL;
     private final int spiderWorkTimeout;
     private final TimeUnit spiderWorkTimeoutUnit;
 
     private final SpiderPreparations<String, P> spiderPreparations;
     private final SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic;
 
-    private NestResult<SpiderResultsDetails<D>> nestResult;
-    private String rootDomainName;
+    private final NestResult<SpiderResultsDetails<D>> nestResult;
 
-    public SpiderWebNestImpl(int nestSize, int maxCrawlIterations, int spiderWorkTimeout, TimeUnit spiderWorkTimeoutUnit,
+    //TODO add sleep logic between works
+    public SpiderWebNestImpl(int nestSize, int maxCrawledURL, int spiderWorkTimeout, TimeUnit spiderWorkTimeoutUnit,
                              SpiderPreparations<String, P> spiderPreparations,
                              SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic) {
 
         this.nestResult = new NestResult<>();
         this.nestExecutorService = Executors.newFixedThreadPool(nestSize);
         this.urlsQueue = new ConcurrentLinkedQueue<>();
-        this.visitedUrls = new ConcurrentHashSet<>();
         this.nestSize = nestSize;
-        this.maxCrawlIterations = maxCrawlIterations;
+        this.visitedUrls = new ConcurrentHashSet<>();
+        this.spidersAtWork = new ConcurrentLinkedQueue<>();
+        this.maxCrawledURL = maxCrawledURL;
         this.spiderWorkTimeout = spiderWorkTimeout;
         this.spiderWorkTimeoutUnit = spiderWorkTimeoutUnit;
         this.spiderPreparations = spiderPreparations;
@@ -64,93 +62,60 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
     public NestResult<SpiderResultsDetails<D>> crawl(String rootUrl) throws Exception {
         final long startTime = System.currentTimeMillis();
         LOGGER.info("Crawling root url [" + rootUrl + "]");
-        rootDomainName = SpidersUtils.getDomainName(rootUrl);
+        String rootDomainName = SpidersUtils.getDomainName(rootUrl);
         if(StringUtils.isEmpty(rootDomainName)) {
             LOGGER.warn("Unable to extract domain from given root URL");
             return nestResult;
         }
 
-        final AtomicInteger crawlIterations = new AtomicInteger(0);
+        final AtomicInteger numOfCrawledURL = new AtomicInteger(0);
         urlsQueue.add(rootUrl);
 
-        while(!urlsQueue.isEmpty()) {
-            LOGGER.info("Crawling stage #" + crawlIterations.get());
-            LOGGER.debug("Queue [" + urlsQueue + "]");
-
-            if(crawlIterations.get() == maxCrawlIterations) {
-                LOGGER.info("Reached defined crawl iterations [" + maxCrawlIterations + "]");
-                break;
-            }
+        while(!urlsQueue.isEmpty() || !spidersAtWork.isEmpty()) {
 
             if (nestExecutorService.isShutdown()) {
                 LOGGER.info("Received request to shutdown the nest");
                 break;
             }
 
-            List<Spider<P, SpiderResultsDetails<D>>> spiders = prepareSpidersForWork();
-            sendSpidersToWork(spiders);
-            crawlIterations.incrementAndGet();
+            String nextUpURL = urlsQueue.poll();
+            if(nextUpURL != null && !visitedUrls.contains(nextUpURL) && spidersAtWork.size() < nestSize && numOfCrawledURL.get() < maxCrawledURL) {
+                visitedUrls.add(nextUpURL);
+                spidersAtWork.add(nestExecutorService.submit(new Spider<>(rootDomainName, nextUpURL, spiderPreparations, spiderLogic)));
+            }
+
+            for(Future<SpiderResult<SpiderResultsDetails<D>>> future : spidersAtWork) {
+
+                if(future.isDone()) {
+                    SpiderResult<SpiderResultsDetails<D>> futureResult = future.get();
+                    if(futureResult != null) {
+                        futureResult.getNextUrls().stream().map(curr-> StringUtils.removeEnd(curr, "/")).forEach(urlsQueue::add);
+                        SpiderResultsDetails<D> findings = futureResult.getFindings();
+                        if(findings != null) {
+                            nestResult.update(futureResult.getUrl(), findings);
+                        }
+                    }
+
+                    LOGGER.info("Done crawling #" + numOfCrawledURL.get());
+                    numOfCrawledURL.incrementAndGet();
+                    spidersAtWork.remove(future);
+
+                } else if(future.isCancelled()) {
+                    spidersAtWork.remove(future);
+                }
+            }
         }
 
+        interruptSpidersWork();
         LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
         return nestResult;
     }
 
-    private List<Spider<P, SpiderResultsDetails<D>>> prepareSpidersForWork() {
-        LOGGER.debug("Preparing spiders for the work");
-        List<Spider<P, SpiderResultsDetails<D>>> spiders = new ArrayList<>();
-        int i = 0;
-        while(i < nestSize) {
-            String nextUrl = urlsQueue.poll();
-            if(nextUrl == null) {
-                break;
-            }
-
-            if(visitedUrls.contains(nextUrl)) {
-                continue;
-            }
-
-            visitedUrls.add(nextUrl);
-            LOGGER.info("Creating spider with url [" + nextUrl + "]");
-            spiders.add(new Spider<>(rootDomainName, nextUrl, spiderPreparations, spiderLogic));
-            i++;
-        }
-
-        LOGGER.debug("Prepared [" + spiders.size() + "] spiders for the work");
-        return spiders;
-    }
-
-    private void sendSpidersToWork(List<Spider<P, SpiderResultsDetails<D>>> spiders) {
-        try {
-            LOGGER.debug("Sending spiders to work");
-            nestExecutorService.invokeAll(spiders).stream().map(future -> {
-                SpiderResult<SpiderResultsDetails<D>> futureResult = null;
-                try {
-                    futureResult = future.get(spiderWorkTimeout, spiderWorkTimeoutUnit);
-                } catch (Exception e) {
-                    LOGGER.warn("Failed during work", e);
-                }
-
-                return futureResult;
-
-            }).forEach(result -> {
-                if(result == null) {
-                    return;
-                }
-
-                result.getNextUrls().stream()
-                                .map(curr-> StringUtils.removeEnd(curr, "/"))
-                                .forEach(urlsQueue::add);
-
-                SpiderResultsDetails<D> findings = result.getFindings();
-                if(findings != null) {
-                    nestResult.update(result.getUrl(), findings);
-                }
-            });
-
-        } catch (Exception e) {
-            LOGGER.error("Failed to force spiders to go to work", e);
-        }
+    private void interruptSpidersWork() {
+        spidersAtWork.forEach(spider -> {
+            LOGGER.info("Interrupting " + spider.toString());
+            spider.cancel(true);
+        });
     }
 
     @Override

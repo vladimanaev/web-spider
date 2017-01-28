@@ -1,7 +1,6 @@
 package com.vladimanaev.spiders.preparations;
 
 import com.gargoylesoftware.htmlunit.*;
-import org.apache.http.annotation.ThreadSafe;
 import org.apache.log4j.Logger;
 
 /**
@@ -10,7 +9,6 @@ import org.apache.log4j.Logger;
  * Time: 4:37 PM
  * Copyright VMSR
  */
-@ThreadSafe
 public class HtmlUnitSpiderPreparations implements SpiderPreparations<String, WebClient> {
 
     private static final Logger LOGGER = Logger.getLogger(HtmlUnitSpiderPreparations.class);

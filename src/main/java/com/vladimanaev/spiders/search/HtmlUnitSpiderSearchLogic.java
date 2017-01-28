@@ -3,7 +3,6 @@ package com.vladimanaev.spiders.search;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.vladimanaev.spiders.model.SpiderResultsDetails;
-import org.apache.http.annotation.ThreadSafe;
 
 import java.util.Collection;
 
@@ -13,11 +12,10 @@ import java.util.Collection;
  * Time: 12:00 AM
  * Copyright VMSR
  */
-@ThreadSafe
 public abstract class HtmlUnitSpiderSearchLogic<D> implements SpiderSearchLogic<String, HtmlPage, SpiderResultsDetails<D>> {
 
     protected final Collection<String> searchFor;
-    protected final SpiderResultsDetails<D> results;
+    protected SpiderResultsDetails<D> results;
 
     public HtmlUnitSpiderSearchLogic(Collection<String> searchFor) {
         this.searchFor = searchFor;
@@ -44,4 +42,8 @@ public abstract class HtmlUnitSpiderSearchLogic<D> implements SpiderSearchLogic<
     @Override
     public abstract SpiderResultsDetails<D> results();
 
+    @Override
+    public void reset() {
+        this.results = new SpiderResultsDetails<>();
+    }
 }

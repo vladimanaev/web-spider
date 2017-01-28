@@ -3,7 +3,6 @@ package com.vladimanaev.spiders;
 import com.vladimanaev.spiders.logic.SpiderLogic;
 import com.vladimanaev.spiders.preparations.SpiderPreparations;
 import com.vladimanaev.spiders.model.SpiderResult;
-import org.apache.http.annotation.ThreadSafe;
 import org.apache.log4j.Logger;
 
 import java.util.concurrent.Callable;
@@ -14,7 +13,6 @@ import java.util.concurrent.Callable;
  * Time: 2:04 AM
  * Copyright VMSR
  */
-@ThreadSafe
 public class Spider<P extends AutoCloseable, R> implements Callable<SpiderResult<R>> {
 
     private static final Logger LOGGER = Logger.getLogger(Spider.class);
@@ -38,11 +36,11 @@ public class Spider<P extends AutoCloseable, R> implements Callable<SpiderResult
     @Override
     public SpiderResult<R> call() throws Exception {
         final long startTime = System.currentTimeMillis();
-        LOGGER.debug("Spider starting to work");
+        LOGGER.info("Spider starting work with url [" + url + "]");
         try (P preparationResult = preparation.execute(url)) {
             return logic.execute(rootDomainName, url, preparationResult);
         } finally {
-            LOGGER.debug("Spider done working over [" + url + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
+            LOGGER.info("Spider done working over [" + url + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
         }
     }
 }

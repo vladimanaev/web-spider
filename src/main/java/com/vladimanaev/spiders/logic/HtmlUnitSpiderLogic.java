@@ -11,7 +11,6 @@ import com.vladimanaev.spiders.model.SpiderResult;
 import com.vladimanaev.spiders.model.SpiderResultsDetails;
 import com.vladimanaev.spiders.search.HtmlUnitSpiderSearchLogic;
 import com.vladimanaev.spiders.util.SpidersUtils;
-import org.apache.http.annotation.ThreadSafe;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -23,7 +22,6 @@ import java.util.*;
  * Time: 4:38 PM
  * Copyright VMSR
  */
-@ThreadSafe
 public class HtmlUnitSpiderLogic<D> implements SpiderLogic<String, WebClient, SpiderResult<SpiderResultsDetails<D>>> {
 
     private static final Logger LOGGER = Logger.getLogger(HtmlUnitSpiderLogic.class);
@@ -71,6 +69,7 @@ public class HtmlUnitSpiderLogic<D> implements SpiderLogic<String, WebClient, Sp
         }
 
         SpiderResultsDetails<D> results = spiderSearchLogic.results();
+        spiderSearchLogic.reset();
         return new SpiderResult<>(url, results == null || results.isEmpty() ? null : results, nextUrls);
     }
 }

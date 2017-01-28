@@ -1,6 +1,7 @@
 package com.vladimanaev.spiders.model;
 
 import java.util.Collection;
+import java.util.Objects;
 
 /**
  * Created by Vladi
@@ -30,6 +31,21 @@ public class SpiderResult<R> {
 
     public Collection<String> getNextUrls() {
         return nextUrls;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SpiderResult<?> that = (SpiderResult<?>) o;
+        return Objects.equals(url, that.url) &&
+        Objects.equals(findings, that.findings) &&
+        Objects.equals(nextUrls, that.nextUrls);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(url, findings, nextUrls);
     }
 
     @Override
