@@ -1,6 +1,5 @@
 package com.vladimanaev.spiders;
 
-import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -17,7 +16,6 @@ import org.junit.Test;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -36,7 +34,7 @@ public class SpiderWebNestImplTest {
         String expectedSearchStr = "google";
         TitleAndNetworkSearchLogic titleAndNetworkSearchLogic = new TitleAndNetworkSearchLogic(Collections.singleton(expectedSearchStr));
         HtmlUnitSpiderLogic<String> spiderLogic = new HtmlUnitSpiderLogic<>(titleAndNetworkSearchLogic);
-        SpiderWebNestImpl<String, WebClient> spiderWebNest = new SpiderWebNestImpl<>(1, 1, 5, TimeUnit.SECONDS, new HtmlUnitSpiderPreparations(), spiderLogic);
+        SpiderWebNest<String> spiderWebNest = new SpiderWebNestImpl<>(1, 1, 10000, new HtmlUnitSpiderPreparations(), spiderLogic);
 
         String rootUrl = "http://www.google.com";
         NestResult<SpiderResultsDetails<String>> nestResult = spiderWebNest.crawl(rootUrl);

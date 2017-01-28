@@ -40,7 +40,7 @@ public class Spider<P extends AutoCloseable, R> implements Callable<SpiderResult
         try (P preparationResult = preparation.execute(url)) {
             return logic.execute(rootDomainName, url, preparationResult);
         } finally {
-            LOGGER.info("Spider done working over [" + url + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
+            LOGGER.info("Spider done working [" + url + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
         }
     }
 }

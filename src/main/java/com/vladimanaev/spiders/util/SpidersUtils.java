@@ -13,6 +13,10 @@ import java.net.URISyntaxException;
  */
 public class SpidersUtils {
 
+    public static long currentTimeMillis() {
+        return System.currentTimeMillis();
+    }
+
     public static String getDomainNameNoException(String url) {
         try {
             return getDomainName(url);
