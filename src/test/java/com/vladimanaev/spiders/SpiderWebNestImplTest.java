@@ -34,7 +34,7 @@ public class SpiderWebNestImplTest {
         String expectedSearchStr = "google";
         TitleAndNetworkSearchLogic titleAndNetworkSearchLogic = new TitleAndNetworkSearchLogic(Collections.singleton(expectedSearchStr));
         HtmlUnitSpiderLogic<String> spiderLogic = new HtmlUnitSpiderLogic<>(titleAndNetworkSearchLogic);
-        SpiderWebNest<String> spiderWebNest = new SpiderWebNestImpl<>(1, 1, 10000, new HtmlUnitSpiderPreparations(), spiderLogic);
+        SpiderWebNest<String> spiderWebNest = new SpiderWebNestImpl<>(1, 200, 1, new HtmlUnitSpiderPreparations(), spiderLogic);
 
         String rootUrl = "http://www.google.com";
         NestResult<SpiderResultsDetails<String>> nestResult = spiderWebNest.crawl(rootUrl);

@@ -32,28 +32,29 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
     private final Set<String> visitedUrls;
 
     private final int nestSize;
+    private final long nestQueenRestMillis;
     private final int maxCrawledURL;
-    private final int spiderWorkTimeoutMs;
+    private final AtomicInteger numOfCrawledURL;
 
     private final SpiderPreparations<String, P> spiderPreparations;
     private final SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic;
 
     private final NestResult<SpiderResultsDetails<D>> nestResult;
 
-    public SpiderWebNestImpl(int nestSize, int maxCrawledURL, int spiderWorkTimeoutMs,
-                             SpiderPreparations<String, P> spiderPreparations,
+    public SpiderWebNestImpl(int nestSize, long nestQueenRestMillis, int maxCrawledURL, SpiderPreparations<String, P> spiderPreparations,
                              SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic) {
 
         this.nestResult = new NestResult<>();
         this.nestExecutorService = Executors.newFixedThreadPool(nestSize);
         this.urlsQueue = new ConcurrentLinkedQueue<>();
         this.nestSize = nestSize;
+        this.nestQueenRestMillis = nestQueenRestMillis;
         this.visitedUrls = new ConcurrentHashSet<>();
         this.spidersAtWork = new ConcurrentLinkedQueue<>();
         this.maxCrawledURL = maxCrawledURL;
-        this.spiderWorkTimeoutMs = spiderWorkTimeoutMs;
         this.spiderPreparations = spiderPreparations;
         this.spiderLogic = spiderLogic;
+        this.numOfCrawledURL = new AtomicInteger(0);
     }
 
     @Override
@@ -73,7 +74,6 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
     }
 
     private void nestLoop(String rootUrl, String rootDomainName) {
-        final AtomicInteger numOfCrawledURL = new AtomicInteger(0);
         urlsQueue.add(rootUrl);
 
         while(!urlsQueue.isEmpty() || !spidersAtWork.isEmpty()) {
@@ -83,8 +83,17 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                 break;
             }
 
+            if(spidersAtWork.isEmpty() && numOfCrawledURL.get() >= maxCrawledURL) {
+                LOGGER.info("Nest work is done, halting.");
+                break;
+            }
+
             String nextUpURL = urlsQueue.poll();
-            if(nextUpURL != null && !visitedUrls.contains(nextUpURL) && spidersAtWork.size() < nestSize && numOfCrawledURL.get() < maxCrawledURL) {
+            if(nextUpURL != null &&
+                isAlreadyCrawled(nextUpURL) &&
+                hasAvailableSpiderWorkers() &&
+                isCrawledEnough()) {
+
                 visitedUrls.add(nextUpURL);
                 addSpiderWork(rootDomainName, nextUpURL);
             }
@@ -92,6 +101,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
             nestQueenResting();
 
             for(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork : spidersAtWork) {
+                //TODO support timeout for a specific SpiderWork in order to be able to give up on specific URL(Future.Cancel not working properly).
 
                 if(spiderWork.isDone()) {
                     LOGGER.info(String.format("Spider done its work [%s]", spiderWork));
@@ -101,27 +111,28 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                     numOfCrawledURL.incrementAndGet();
                     removeSpiderWork(spiderWork);
 
-                } else if(spiderWork.isCancelled()) {
-                    LOGGER.info(String.format("Spider's work got cancelled [%s]", spiderWork));
-                    removeSpiderWork(spiderWork);
-
-                } else if(isWorkTimeout(spiderWork)) {
-                    LOGGER.info(String.format("Spider's work timeout [%s]", spiderWork));
-                    if(cancelWork(spiderWork)) {
-                        removeSpiderWork(spiderWork);
-                    }
                 }
             }
         }
+    }
 
-        interruptSpidersWork();
+    private boolean isCrawledEnough() {
+        return numOfCrawledURL.get() + spidersAtWork.size() < maxCrawledURL;
+    }
+
+    private boolean hasAvailableSpiderWorkers() {
+        return spidersAtWork.size() < nestSize;
+    }
+
+    private boolean isAlreadyCrawled(String nextUpURL) {
+        return !visitedUrls.contains(nextUpURL);
     }
 
     private void nestQueenResting() {
         try {
-            Thread.sleep(500L);
+            Thread.sleep(nestQueenRestMillis);
         } catch (InterruptedException e) {
-            LOGGER.warn("Failed to sleep");
+            LOGGER.warn("Nest queen failed to rest");
         }
     }
 
@@ -135,8 +146,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
 
     private void handleDoneWork(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork) {
         try {
-            SpiderResult<SpiderResultsDetails<D>> futureResult = null;
-            futureResult = spiderWork.get();
+            SpiderResult<SpiderResultsDetails<D>> futureResult = spiderWork.get();
             if(futureResult != null) {
                 futureResult.getNextUrls().stream().map(curr-> StringUtils.removeEnd(curr, "/")).forEach(urlsQueue::add);
                 SpiderResultsDetails<D> findings = futureResult.getFindings();
@@ -152,25 +162,6 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
 
     private SpiderWork<SpiderResult<SpiderResultsDetails<D>>> sendSpiderToWork(String rootDomainName, String nextUpURL) {
         return new SpiderWork<>(SpidersUtils.currentTimeMillis(), nextUpURL, nestExecutorService.submit(new Spider<>(rootDomainName, nextUpURL, spiderPreparations, spiderLogic)));
-    }
-
-    private boolean cancelWork(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork) {
-        LOGGER.info(String.format("Interrupting  work [%s]", spiderWork));
-        boolean manageToCancelWork = spiderWork.cancel(true);
-        if(!manageToCancelWork) {
-            //TODO create retry mechanism
-            LOGGER.warn("Failed to cancel work after its timeout.");
-        }
-
-        return manageToCancelWork;
-    }
-
-    private boolean isWorkTimeout(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork) {
-        return SpidersUtils.currentTimeMillis() - spiderWork.getStartTimeMillis() > spiderWorkTimeoutMs;
-    }
-
-    private void interruptSpidersWork() {
-        spidersAtWork.forEach(this::cancelWork);
     }
 
     @Override

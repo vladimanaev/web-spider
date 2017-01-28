@@ -3,6 +3,8 @@ package com.vladimanaev.spiders.model;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by Vladi
@@ -40,6 +42,10 @@ public class SpiderWork<D> {
 
     public D get() throws ExecutionException, InterruptedException {
         return result.get();
+    }
+
+    public D get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+        return result.get(timeout, unit);
     }
 
     public String getUrl() {
