@@ -68,8 +68,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
 
         nestLoop(rootUrl, rootDomainName);
 
-        interruptSpidersWork();
-        LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((System.currentTimeMillis() - startTime) / 1000) + "s]");
+        LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((SpidersUtils.currentTimeMillis() - startTime) / 1000) + "s]");
         return nestResult;
     }
 
@@ -111,6 +110,18 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                     }
                 }
             }
+
+            nestQueenResting();
+        }
+
+        interruptSpidersWork();
+    }
+
+    private void nestQueenResting() {
+        try {
+            Thread.sleep(500L);
+        } catch (InterruptedException e) {
+            LOGGER.warn("Failed to sleep");
         }
     }
 
