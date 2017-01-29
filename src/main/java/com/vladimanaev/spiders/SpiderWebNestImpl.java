@@ -30,6 +30,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
     private final Queue<String> urlsQueue;
     private final Queue<SpiderWork<SpiderResult<SpiderResultsDetails<D>>>> spidersAtWork;
     private final Set<String> visitedUrls;
+    private final Set<String> urlsQueueReplica;
 
     private final int nestSize;
     private final long nestQueenRestMillis;
@@ -47,6 +48,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         this.nestResult = new NestResult<>();
         this.nestExecutorService = Executors.newFixedThreadPool(nestSize);
         this.urlsQueue = new ConcurrentLinkedQueue<>();
+        this.urlsQueueReplica = new ConcurrentHashSet<>();
         this.nestSize = nestSize;
         this.nestQueenRestMillis = nestQueenRestMillis;
         this.visitedUrls = new ConcurrentHashSet<>();
@@ -88,9 +90,9 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                 break;
             }
 
-            String nextUpURL = urlsQueue.poll();
+            String nextUpURL = getNextUpURL();
             if(nextUpURL != null &&
-                isAlreadyCrawled(nextUpURL) &&
+                wasNotCrawled(nextUpURL) &&
                 hasAvailableSpiderWorkers() &&
                 isCrawledEnough()) {
 
@@ -104,7 +106,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                 //TODO support timeout for a specific SpiderWork in order to be able to give up on specific URL(Future.Cancel not working properly).
 
                 if(spiderWork.isDone()) {
-                    LOGGER.info(String.format("Spider done its work [%s]", spiderWork));
+                    LOGGER.debug(String.format("Spider done its work [%s]", spiderWork));
                     handleDoneWork(spiderWork);
 
                     LOGGER.info("Done crawling URL #" + numOfCrawledURL.get());
@@ -116,6 +118,14 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         }
     }
 
+    private String getNextUpURL() {
+        String nextUpURL = urlsQueue.poll();
+        if(nextUpURL != null) {
+            urlsQueueReplica.remove(nextUpURL);
+        }
+        return nextUpURL;
+    }
+
     private boolean isCrawledEnough() {
         return numOfCrawledURL.get() + spidersAtWork.size() < maxCrawledURL;
     }
@@ -124,7 +134,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         return spidersAtWork.size() < nestSize;
     }
 
-    private boolean isAlreadyCrawled(String nextUpURL) {
+    private boolean wasNotCrawled(String nextUpURL) {
         return !visitedUrls.contains(nextUpURL);
     }
 
@@ -148,16 +158,26 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         try {
             SpiderResult<SpiderResultsDetails<D>> futureResult = spiderWork.get();
             if(futureResult != null) {
-                futureResult.getNextUrls().stream().map(curr-> StringUtils.removeEnd(curr, "/")).forEach(urlsQueue::add);
+                for(String potentialNextUrl : futureResult.getNextUrls()) {
+                    potentialNextUrl = StringUtils.removeEnd(potentialNextUrl, "/");
+                    if(wasNotCrawled(potentialNextUrl) && notInTheQueue(potentialNextUrl)) {
+                        urlsQueue.add(potentialNextUrl);
+                        urlsQueueReplica.add(potentialNextUrl);
+                    }
+                }
+
                 SpiderResultsDetails<D> findings = futureResult.getFindings();
                 if(findings != null) {
                     nestResult.update(futureResult.getUrl(), findings);
                 }
             }
         } catch (Exception e) {
-            LOGGER.warn(String.format("Failed to handle spider's work [%s]", spiderWork));
-            removeSpiderWork(spiderWork);
+            LOGGER.warn(String.format("Failed to handle spider's work [%s]", spiderWork), e);
         }
+    }
+
+    private boolean notInTheQueue(String potentialNextUrl) {
+        return !urlsQueueReplica.contains(potentialNextUrl);
     }
 
     private SpiderWork<SpiderResult<SpiderResultsDetails<D>>> sendSpiderToWork(String rootDomainName, String nextUpURL) {

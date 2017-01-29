@@ -36,7 +36,7 @@ public class Spider<P extends AutoCloseable, R> implements Callable<SpiderResult
     @Override
     public SpiderResult<R> call() throws Exception {
         final long startTime = System.currentTimeMillis();
-        LOGGER.info("Spider starting work with url [" + url + "]");
+        LOGGER.debug("Spider starting work with url [" + url + "]");
         try (P preparationResult = preparation.execute(url)) {
             return logic.execute(rootDomainName, url, preparationResult);
         } finally {
