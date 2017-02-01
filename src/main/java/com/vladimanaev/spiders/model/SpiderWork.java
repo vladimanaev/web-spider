@@ -12,7 +12,7 @@ import java.util.concurrent.TimeoutException;
  * Time: 2:56 AM
  * Copyright VMSR
  */
-public class SpiderWork<D> {
+public class SpiderWork<D extends SpiderResult> {
 
     private final long startTimeMillis;
     private final String url;
