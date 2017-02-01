@@ -62,6 +62,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
     @Override
     public NestResult<SpiderResultsDetails<D>> crawl(String rootUrl) throws Exception {
         final long startTime = SpidersUtils.currentTimeMillis();
+        numOfCrawledURL.set(0);
         LOGGER.info("Crawling root url [" + rootUrl + "]");
         String rootDomainName = SpidersUtils.getDomainName(rootUrl);
         if(StringUtils.isEmpty(rootDomainName)) {
@@ -94,7 +95,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
             if(nextUpURL != null &&
                 wasNotCrawled(nextUpURL) &&
                 hasAvailableSpiderWorkers() &&
-                isCrawledEnough()) {
+                didNotCrawleEnough()) {
 
                 visitedUrls.add(nextUpURL);
                 addSpiderWork(rootDomainName, nextUpURL);
@@ -106,13 +107,8 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                 //TODO support timeout for a specific SpiderWork in order to be able to give up on specific URL(Future.Cancel not working properly).
 
                 if(spiderWork.isDone()) {
-                    LOGGER.debug(String.format("Spider done its work [%s]", spiderWork));
                     handleDoneWork(spiderWork);
-
-                    LOGGER.info("Done crawling URL #" + numOfCrawledURL.get());
-                    numOfCrawledURL.incrementAndGet();
                     removeSpiderWork(spiderWork);
-
                 }
             }
         }
@@ -126,7 +122,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         return nextUpURL;
     }
 
-    private boolean isCrawledEnough() {
+    private boolean didNotCrawleEnough() {
         return numOfCrawledURL.get() + spidersAtWork.size() < maxCrawledURL;
     }
 
@@ -155,6 +151,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
     }
 
     private void handleDoneWork(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork) {
+        LOGGER.debug(String.format("Spider done its work [%s]", spiderWork));
         try {
             SpiderResult<SpiderResultsDetails<D>> futureResult = spiderWork.get();
             if(futureResult != null) {
@@ -174,6 +171,9 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         } catch (Exception e) {
             LOGGER.warn(String.format("Failed to handle spider's work [%s]", spiderWork), e);
         }
+
+        LOGGER.info("Done crawling URL #" + numOfCrawledURL.get());
+        numOfCrawledURL.incrementAndGet();
     }
 
     private boolean notInTheQueue(String potentialNextUrl) {
