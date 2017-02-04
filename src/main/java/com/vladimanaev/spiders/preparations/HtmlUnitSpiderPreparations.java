@@ -12,12 +12,26 @@ import org.apache.log4j.Logger;
 public class HtmlUnitSpiderPreparations implements SpiderPreparations<String, WebClient> {
 
     private static final Logger LOGGER = Logger.getLogger(HtmlUnitSpiderPreparations.class);
+    private final BrowserVersion browserVersion;
+
+    public HtmlUnitSpiderPreparations() {
+        this.browserVersion = BrowserVersion.BEST_SUPPORTED;
+    }
+
+    public HtmlUnitSpiderPreparations(String userAgent) {
+        this.browserVersion = BrowserVersion.BEST_SUPPORTED;
+        this.browserVersion.setUserAgent(userAgent);
+    }
+
+    public HtmlUnitSpiderPreparations(BrowserVersion browserVersion) {
+        this.browserVersion = browserVersion;
+    }
 
     @Override
     public WebClient execute(String url) {
         LOGGER.debug("Executing preparation for [" + url + "]");
 
-        final WebClient webClient = new WebClient();
+        final WebClient webClient = new WebClient(browserVersion);
 
         webClient.setJavaScriptErrorListener(null);
         webClient.setAjaxController(new NicelyResynchronizingAjaxController());
