@@ -10,11 +10,39 @@ Dependencies
     <artifactId>web-spider</artifactId>
     <version>1.0.0</version>
 </dependency>
+
+<repositories>
+    <repository>
+        <snapshots>
+            <enabled>false</enabled>
+        </snapshots>
+        <id>bintray-vadimmanaev-maven</id>
+        <name>bintray</name>
+        <url>http://dl.bintray.com/vadimmanaev/maven</url>
+    </repository>
+</repositories>
+
+<pluginRepositories>
+    <pluginRepository>
+        <snapshots>
+            <enabled>false</enabled>
+        </snapshots>
+        <id>bintray-vadimmanaev-maven</id>
+        <name>bintray-plugins</name>
+        <url>http://dl.bintray.com/vadimmanaev/maven</url>
+    </pluginRepository>
+</pluginRepositories>
 ```
 
 If your project is built with Gradle add following to your gradle setting file:
 ```
 compile 'com.vladimanaev:web-spider:1.0.0'
+
+repositories {
+    maven {
+        url  "http://dl.bintray.com/vadimmanaev/maven"
+    }
+}
 ```
 
 Tips:
