@@ -3,7 +3,6 @@ package com.vladimanaev.spiders;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.vladimanaev.spiders.logic.HtmlUnitSpiderLogic;
 import com.vladimanaev.spiders.search.HtmlUnitSpiderSearchLogic;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
@@ -22,13 +21,12 @@ public class SpiderWebNestWithParallelismTest {
     public void testGeneralHtmlUnitHappyFlow() throws Exception {
         String expectedSearchStr = "google";
         TitleAndNetworkSearchLogic titleAndNetworkSearchLogic = new TitleAndNetworkSearchLogic(expectedSearchStr);
-        HtmlUnitSpiderLogic htmlUnitSpiderLogic = new HtmlUnitSpiderLogic(titleAndNetworkSearchLogic);
 
         SpiderWebNest spiderWebNest = SpiderWebNestWithParallelism.builder()
                                                                 .setNestSize(1)
                                                                 .setMaxNumOfCrawledURL(1)
                                                                 .setNestQueenRestMillis(200)
-                                                                .setLogic(htmlUnitSpiderLogic)
+                                                                .setLogic(titleAndNetworkSearchLogic)
                                                                 .build();
 
         spiderWebNest.crawl("http://www.google.com");

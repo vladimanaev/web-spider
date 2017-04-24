@@ -4,6 +4,7 @@ import com.vladimanaev.spiders.logic.HtmlUnitSpiderLogic;
 import com.vladimanaev.spiders.logic.SpiderLogic;
 import com.vladimanaev.spiders.model.SpiderWork;
 import com.vladimanaev.spiders.model.SpiderResult;
+import com.vladimanaev.spiders.search.HtmlUnitSpiderSearchLogic;
 import com.vladimanaev.spiders.util.SpidersUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -195,7 +196,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
         private int nestSize;
         private long nestQueenRestMillis;
         private int maxNumOfCrawledURL;
-        private HtmlUnitSpiderLogic htmlUnitSpiderLogic;
+        private HtmlUnitSpiderSearchLogic searchLogic;
 
         public SpiderWebNestWithParallelismBuilder setNestSize(int nestSize) {
             this.nestSize = nestSize;
@@ -212,14 +213,14 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
             return this;
         }
 
-        public SpiderWebNestWithParallelismBuilder setLogic(HtmlUnitSpiderLogic htmlUnitSpiderLogic) {
-            this.htmlUnitSpiderLogic = htmlUnitSpiderLogic;
+        public SpiderWebNestWithParallelismBuilder setLogic(HtmlUnitSpiderSearchLogic searchLogic) {
+            this.searchLogic = searchLogic;
             return this;
         }
 
         public SpiderWebNestWithParallelism build() {
             validateState();
-            return new SpiderWebNestWithParallelism(nestSize, nestQueenRestMillis, maxNumOfCrawledURL, htmlUnitSpiderLogic);
+            return new SpiderWebNestWithParallelism(nestSize, nestQueenRestMillis, maxNumOfCrawledURL, new HtmlUnitSpiderLogic(searchLogic));
         }
 
         private void validateState() {
@@ -235,8 +236,8 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
                 throw new IllegalStateException("maxNumOfCrawledURL must be positive");
             }
 
-            if(htmlUnitSpiderLogic == null) {
-                throw new IllegalStateException("htmlUnitSpiderLogic is null");
+            if(searchLogic == null) {
+                throw new IllegalStateException("searchLogic is null");
             }
         }
     }
