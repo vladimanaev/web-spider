@@ -2,6 +2,25 @@
 
 Server side web crawler allowing full page render crawl using HtmlUnit with many configurations and parallelism.
 
+Code Examples
+=============
+```
+//Implement SpiderLogic interface in order to start gathering data that is relevant for you.
+MyOwnSearchLogic mySearchLogic = new MyOwnSearchLogic();
+
+//Use builder to build the correct configuration for you.
+SpiderWebNest spiderWebNest = SpiderWebNestWithParallelism.builder()
+                                                        .setNestSize(10)
+                                                        .setMaxNumOfCrawledURL(50)
+                                                        .setNestQueenRestMillis(200)
+                                                        .setLogic(mySearchLogic)
+                                                        .build();
+
+//Start the magic!
+spiderWebNest.crawl("http://www.google.com");
+```
+
+
 Dependencies
 =============
 ```
