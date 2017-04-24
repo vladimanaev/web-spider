@@ -6,11 +6,7 @@ package com.vladimanaev.spiders.search;
  * Time: 11:53 PM
  * Copyright VMSR
  */
-public interface SpiderSearchLogic<U, P, R> {
+public interface SpiderSearchLogic<P> {
 
-    void apply(U url, P page);
-
-    R results();
-
-    void reset();
+    void apply(String url, P page);
 }

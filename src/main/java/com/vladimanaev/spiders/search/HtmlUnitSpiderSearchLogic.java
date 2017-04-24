@@ -2,9 +2,6 @@ package com.vladimanaev.spiders.search;
 
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-import com.vladimanaev.spiders.model.SpiderResultsDetails;
-
-import java.util.Collection;
 
 /**
  * Created by Vladi
@@ -12,15 +9,7 @@ import java.util.Collection;
  * Time: 12:00 AM
  * Copyright VMSR
  */
-public abstract class HtmlUnitSpiderSearchLogic<D> implements SpiderSearchLogic<String, HtmlPage, SpiderResultsDetails<D>> {
-
-    protected final Collection<String> searchFor;
-    protected SpiderResultsDetails<D> results;
-
-    public HtmlUnitSpiderSearchLogic(Collection<String> searchFor) {
-        this.searchFor = searchFor;
-        this.results = new SpiderResultsDetails<>();
-    }
+public abstract class HtmlUnitSpiderSearchLogic implements SpiderSearchLogic<HtmlPage> {
 
     /**
      * Apply the search logic
@@ -35,15 +24,4 @@ public abstract class HtmlUnitSpiderSearchLogic<D> implements SpiderSearchLogic<
      * @param request HtmlPage resource request
      */
     public abstract void networkSniffer(WebRequest request);
-
-    /**
-     * @return search logic results
-     */
-    @Override
-    public abstract SpiderResultsDetails<D> results();
-
-    @Override
-    public void reset() {
-        this.results = new SpiderResultsDetails<>();
-    }
 }

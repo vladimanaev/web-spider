@@ -1,10 +1,8 @@
 package com.vladimanaev.spiders;
 
+import com.vladimanaev.spiders.logic.HtmlUnitSpiderLogic;
 import com.vladimanaev.spiders.logic.SpiderLogic;
-import com.vladimanaev.spiders.model.SpiderResultsDetails;
 import com.vladimanaev.spiders.model.SpiderWork;
-import com.vladimanaev.spiders.preparations.SpiderPreparations;
-import com.vladimanaev.spiders.model.NestResult;
 import com.vladimanaev.spiders.model.SpiderResult;
 import com.vladimanaev.spiders.util.SpidersUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -22,30 +20,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Time: 1:55 AM
  * Copyright VMSR
  */
-public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebNest<D> {
+public class SpiderWebNestWithParallelism implements SpiderWebNest {
 
-    private static final Logger LOGGER = Logger.getLogger(SpiderWebNestImpl.class);
+    private static final Logger LOGGER = Logger.getLogger(SpiderWebNestWithParallelism.class);
 
     private final ExecutorService nestExecutorService;
     private final Queue<String> urlsQueue;
-    private final Queue<SpiderWork<SpiderResult<SpiderResultsDetails<D>>>> spidersAtWork;
+    private final Queue<SpiderWork<SpiderResult>> spidersAtWork;
     private final Set<String> visitedUrls;
     private final Set<String> urlsQueueReplica;
 
     private final int nestSize;
     private final long nestQueenRestMillis;
-    private final int maxCrawledURL;
+    private final int numOfMaxCrawledURL;
     private final AtomicInteger numOfCrawledURL;
 
-    private final SpiderPreparations<String, P> spiderPreparations;
-    private final SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic;
+    private final SpiderLogic spiderLogic;
 
-    private final NestResult<SpiderResultsDetails<D>> nestResult;
+    /**
+     * Use builder to construct spiders nest
+     */
+    private SpiderWebNestWithParallelism(int nestSize, long nestQueenRestMillis,
+                                         int numOfMaxCrawledURL, SpiderLogic spiderLogic) {
 
-    public SpiderWebNestImpl(int nestSize, long nestQueenRestMillis, int maxCrawledURL, SpiderPreparations<String, P> spiderPreparations,
-                             SpiderLogic<String, P, SpiderResult<SpiderResultsDetails<D>>> spiderLogic) {
-
-        this.nestResult = new NestResult<>();
         this.nestExecutorService = Executors.newFixedThreadPool(nestSize);
         this.urlsQueue = new ConcurrentLinkedQueue<>();
         this.urlsQueueReplica = new ConcurrentHashSet<>();
@@ -53,27 +50,25 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         this.nestQueenRestMillis = nestQueenRestMillis;
         this.visitedUrls = new ConcurrentHashSet<>();
         this.spidersAtWork = new ConcurrentLinkedQueue<>();
-        this.maxCrawledURL = maxCrawledURL;
-        this.spiderPreparations = spiderPreparations;
+        this.numOfMaxCrawledURL = numOfMaxCrawledURL;
         this.spiderLogic = spiderLogic;
         this.numOfCrawledURL = new AtomicInteger(0);
     }
 
     @Override
-    public NestResult<SpiderResultsDetails<D>> crawl(String rootUrl) throws Exception {
+    public void crawl(String rootUrl) throws Exception {
         final long startTime = SpidersUtils.currentTimeMillis();
         numOfCrawledURL.set(0);
         LOGGER.info("Crawling root url [" + rootUrl + "]");
         String rootDomainName = SpidersUtils.getDomainName(rootUrl);
         if(StringUtils.isEmpty(rootDomainName)) {
             LOGGER.warn("Unable to extract domain from given root URL");
-            return nestResult;
+            return;
         }
 
         nestLoop(rootUrl, rootDomainName);
 
         LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((SpidersUtils.currentTimeMillis() - startTime) / 1000) + "s]");
-        return nestResult;
     }
 
     private void nestLoop(String rootUrl, String rootDomainName) {
@@ -86,7 +81,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                 break;
             }
 
-            if(spidersAtWork.isEmpty() && numOfCrawledURL.get() >= maxCrawledURL) {
+            if(spidersAtWork.isEmpty() && numOfCrawledURL.get() >= numOfMaxCrawledURL) {
                 LOGGER.info("Nest work is done, halting.");
                 break;
             }
@@ -95,7 +90,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
             if(nextUpURL != null &&
                 wasNotCrawled(nextUpURL) &&
                 hasAvailableSpiderWorkers() &&
-                didNotCrawleEnough()) {
+                didNotCrawlEnough()) {
 
                 visitedUrls.add(nextUpURL);
                 addSpiderWork(rootDomainName, nextUpURL);
@@ -103,7 +98,7 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
 
             nestQueenResting();
 
-            for(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork : spidersAtWork) {
+            for(SpiderWork<SpiderResult> spiderWork : spidersAtWork) {
                 //TODO support timeout for a specific SpiderWork in order to be able to give up on specific URL(Future.Cancel not working properly).
 
                 if(spiderWork.isDone()) {
@@ -122,8 +117,8 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         return nextUpURL;
     }
 
-    private boolean didNotCrawleEnough() {
-        return numOfCrawledURL.get() + spidersAtWork.size() < maxCrawledURL;
+    private boolean didNotCrawlEnough() {
+        return numOfCrawledURL.get() + spidersAtWork.size() < numOfMaxCrawledURL;
     }
 
     private boolean hasAvailableSpiderWorkers() {
@@ -146,14 +141,14 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         spidersAtWork.add(sendSpiderToWork(rootDomainName, nextUpURL));
     }
 
-    private void removeSpiderWork(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork) {
+    private void removeSpiderWork(SpiderWork<SpiderResult> spiderWork) {
         spidersAtWork.remove(spiderWork);
     }
 
-    private void handleDoneWork(SpiderWork<SpiderResult<SpiderResultsDetails<D>>> spiderWork) {
+    private void handleDoneWork(SpiderWork<SpiderResult> spiderWork) {
         LOGGER.debug(String.format("Spider done its work [%s]", spiderWork));
         try {
-            SpiderResult<SpiderResultsDetails<D>> futureResult = spiderWork.get();
+            SpiderResult futureResult = spiderWork.get();
             if(futureResult != null) {
                 for(String potentialNextUrl : futureResult.getNextUrls()) {
                     potentialNextUrl = StringUtils.removeEnd(potentialNextUrl, "/");
@@ -163,10 +158,6 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
                     }
                 }
 
-                SpiderResultsDetails<D> findings = futureResult.getFindings();
-                if(findings != null) {
-                    nestResult.update(futureResult.getUrl(), findings);
-                }
             }
         } catch (Exception e) {
             LOGGER.warn(String.format("Failed to handle spider's work [%s]", spiderWork), e);
@@ -180,12 +171,73 @@ public class SpiderWebNestImpl<D, P extends AutoCloseable> implements SpiderWebN
         return !urlsQueueReplica.contains(potentialNextUrl);
     }
 
-    private SpiderWork<SpiderResult<SpiderResultsDetails<D>>> sendSpiderToWork(String rootDomainName, String nextUpURL) {
-        return new SpiderWork<>(SpidersUtils.currentTimeMillis(), nextUpURL, nestExecutorService.submit(new Spider<>(rootDomainName, nextUpURL, spiderPreparations, spiderLogic)));
+    private SpiderWork<SpiderResult> sendSpiderToWork(String rootDomainName, String nextUpURL) {
+        return new SpiderWork<>(SpidersUtils.currentTimeMillis(), nextUpURL, nestExecutorService.submit(new Spider(rootDomainName, nextUpURL, spiderLogic)));
     }
 
     @Override
     public void close() throws Exception {
         nestExecutorService.shutdown();
+    }
+
+    /**
+     * BUILDER ----->
+     */
+    public static SpiderWebNestWithParallelismBuilder builder() {
+        return new SpiderWebNestWithParallelismBuilder();
+    }
+
+    /**
+     * Parallelism spider nest builder
+     */
+    public static class SpiderWebNestWithParallelismBuilder {
+
+        private int nestSize;
+        private long nestQueenRestMillis;
+        private int maxNumOfCrawledURL;
+        private HtmlUnitSpiderLogic htmlUnitSpiderLogic;
+
+        public SpiderWebNestWithParallelismBuilder setNestSize(int nestSize) {
+            this.nestSize = nestSize;
+            return this;
+        }
+
+        public SpiderWebNestWithParallelismBuilder setNestQueenRestMillis(long nestQueenRestMillis) {
+            this.nestQueenRestMillis = nestQueenRestMillis;
+            return this;
+        }
+
+        public SpiderWebNestWithParallelismBuilder setMaxNumOfCrawledURL(int maxNumOfCrawledURL) {
+            this.maxNumOfCrawledURL = maxNumOfCrawledURL;
+            return this;
+        }
+
+        public SpiderWebNestWithParallelismBuilder setLogic(HtmlUnitSpiderLogic htmlUnitSpiderLogic) {
+            this.htmlUnitSpiderLogic = htmlUnitSpiderLogic;
+            return this;
+        }
+
+        public SpiderWebNestWithParallelism build() {
+            validateState();
+            return new SpiderWebNestWithParallelism(nestSize, nestQueenRestMillis, maxNumOfCrawledURL, htmlUnitSpiderLogic);
+        }
+
+        private void validateState() {
+            if(nestSize <= 0) {
+                throw new IllegalStateException("nestSize must be positive");
+            }
+
+            if(nestQueenRestMillis <= 0) {
+                throw new IllegalStateException("nestQueenRestMillis must be positive");
+            }
+
+            if(maxNumOfCrawledURL <= 0) {
+                throw new IllegalStateException("maxNumOfCrawledURL must be positive");
+            }
+
+            if(htmlUnitSpiderLogic == null) {
+                throw new IllegalStateException("htmlUnitSpiderLogic is null");
+            }
+        }
     }
 }
