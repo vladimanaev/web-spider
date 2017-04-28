@@ -30,7 +30,7 @@ public class HtmlUnitSpiderLogic implements SpiderLogic {
     @Override
     public SpiderResult execute(String rootDomainName, String url) {
         long startTime = SpidersUtils.currentTimeMillis();
-        try (WebClient webClient = createWebClient(url)) {
+        try (WebClient webClient = spiderSearchLogic.createWebClient()) {
             LOGGER.debug("Executing logic for [" + rootDomainName + "] and url [" + url + "]");
 
             final WebConnection webConnection = webClient.getWebConnection();
@@ -70,30 +70,5 @@ public class HtmlUnitSpiderLogic implements SpiderLogic {
         } finally {
             LOGGER.info("Spider done working [" + url + "], took [" + ((SpidersUtils.currentTimeMillis() - startTime) / 1000) + "s]");
         }
-    }
-
-    private WebClient createWebClient(String url) {
-        LOGGER.debug("creating web client for [" + url + "]");
-
-        final WebClient webClient = new WebClient();
-
-        webClient.setJavaScriptErrorListener(null);
-        webClient.setAjaxController(new NicelyResynchronizingAjaxController());
-        webClient.setJavaScriptTimeout(500);
-        webClient.waitForBackgroundJavaScript(490);
-
-        WebClientOptions options = webClient.getOptions();
-
-        options.setRedirectEnabled(true);
-        options.setJavaScriptEnabled(true);
-        options.setCssEnabled(true);
-        options.setUseInsecureSSL(true);
-
-        options.setThrowExceptionOnScriptError(false);
-        options.setThrowExceptionOnFailingStatusCode(false);
-        options.setPopupBlockerEnabled(false);
-        options.setPrintContentOnFailingStatusCode(false);
-
-        return webClient;
     }
 }

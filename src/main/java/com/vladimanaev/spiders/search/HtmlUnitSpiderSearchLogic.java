@@ -1,6 +1,6 @@
 package com.vladimanaev.spiders.search;
 
-import com.gargoylesoftware.htmlunit.WebRequest;
+import com.gargoylesoftware.htmlunit.*;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
@@ -24,4 +24,38 @@ public abstract class HtmlUnitSpiderSearchLogic implements SpiderSearchLogic<Htm
      * @param request HtmlPage resource request
      */
     public abstract void networkSniffer(WebRequest request);
+
+    /**
+     * @return browser version
+     */
+    public BrowserVersion getBrowserVersion() {
+        return BrowserVersion.getDefault();
+    }
+
+    /**
+     * Creates web client for each crawling URL
+     */
+    public WebClient createWebClient() {
+
+        final WebClient webClient = new WebClient(getBrowserVersion());
+
+        webClient.setJavaScriptErrorListener(null);
+        webClient.setAjaxController(new NicelyResynchronizingAjaxController());
+        webClient.setJavaScriptTimeout(500);
+        webClient.waitForBackgroundJavaScript(490);
+
+        WebClientOptions options = webClient.getOptions();
+
+        options.setRedirectEnabled(true);
+        options.setJavaScriptEnabled(true);
+        options.setCssEnabled(true);
+        options.setUseInsecureSSL(true);
+
+        options.setThrowExceptionOnScriptError(false);
+        options.setThrowExceptionOnFailingStatusCode(false);
+        options.setPopupBlockerEnabled(false);
+        options.setPrintContentOnFailingStatusCode(false);
+
+        return webClient;
+    }
 }
