@@ -34,7 +34,7 @@ public class HtmlUnitSpiderLogic implements SpiderLogic {
             LOGGER.debug("Executing logic for [" + rootDomainName + "] and url [" + url + "]");
 
             final WebConnection webConnection = webClient.getWebConnection();
-            final List<String> nextUrls = new ArrayList<>();
+            final List<String> nextUrls = new LinkedList<>();
 
             webClient.setWebConnection(new WebConnection() {
                 @Override
