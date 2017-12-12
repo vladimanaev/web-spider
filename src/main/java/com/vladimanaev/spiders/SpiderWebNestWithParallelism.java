@@ -28,8 +28,8 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
     private final ExecutorService nestExecutorService;
     private final Queue<String> urlsQueue;
     private final Queue<SpiderWork<SpiderResult>> spidersAtWork;
-    private final Set<String> visitedUrls;
-    private final Set<String> urlsQueueReplica;
+    private final Set<Integer> visitedUrls;
+    private final Set<Integer> urlsQueueReplica;
 
     private final int nestSize;
     private final long nestQueenRestMillis;
@@ -67,6 +67,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
             return;
         }
 
+        Thread.currentThread().setName(Thread.currentThread().getName() + " | Queen Nest");
         nestLoop(rootUrl, rootDomainName);
 
         LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((SpidersUtils.currentTimeMillis() - startTime) / 1000) + "s]");
@@ -87,14 +88,9 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
                 break;
             }
 
-            String nextUpURL = getNextUpURL();
-            if(nextUpURL != null &&
-                wasNotCrawled(nextUpURL) &&
-                hasAvailableSpiderWorkers() &&
-                didNotCrawlEnough()) {
-
-                visitedUrls.add(nextUpURL);
-                addSpiderWork(rootDomainName, nextUpURL);
+            for(int i = 0; i < Math.min(numUnemployedSpiders(), urlsQueue.size()); i++) {
+                String nextUpURL = peekNextUpURL();
+                trySendSpider(rootDomainName, nextUpURL);
             }
 
             nestQueenResting();
@@ -110,12 +106,26 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
         }
     }
 
-    private String getNextUpURL() {
-        String nextUpURL = urlsQueue.poll();
-        if(nextUpURL != null) {
-            urlsQueueReplica.remove(nextUpURL);
+    private int numUnemployedSpiders() {
+        return nestSize - spidersAtWork.size();
+    }
+
+    private void trySendSpider(String rootDomainName, String nextUpURL) {
+        if(nextUpURL != null &&
+            wasNotCrawled(nextUpURL) &&
+            hasAvailableSpiderWorkers() &&
+            didNotCrawlEnough()) {
+
+            int nextUpURLCode = nextUpURL.hashCode();
+            urlsQueue.remove(nextUpURL);
+            urlsQueueReplica.remove(nextUpURLCode);
+            visitedUrls.add(nextUpURLCode);
+            addSpiderWork(rootDomainName, nextUpURL);
         }
-        return nextUpURL;
+    }
+
+    private String peekNextUpURL() {
+        return urlsQueue.peek();
     }
 
     private boolean didNotCrawlEnough() {
@@ -127,7 +137,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
     }
 
     private boolean wasNotCrawled(String nextUpURL) {
-        return !visitedUrls.contains(nextUpURL);
+        return !visitedUrls.contains(nextUpURL.hashCode());
     }
 
     private void nestQueenResting() {
@@ -155,7 +165,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
                     potentialNextUrl = StringUtils.removeEnd(potentialNextUrl, "/");
                     if(wasNotCrawled(potentialNextUrl) && notInTheQueue(potentialNextUrl)) {
                         urlsQueue.add(potentialNextUrl);
-                        urlsQueueReplica.add(potentialNextUrl);
+                        urlsQueueReplica.add(potentialNextUrl.hashCode());
                     }
                 }
 
@@ -169,7 +179,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
     }
 
     private boolean notInTheQueue(String potentialNextUrl) {
-        return !urlsQueueReplica.contains(potentialNextUrl);
+        return !urlsQueueReplica.contains(potentialNextUrl.hashCode());
     }
 
     private SpiderWork<SpiderResult> sendSpiderToWork(String rootDomainName, String nextUpURL) {
@@ -177,7 +187,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         nestExecutorService.shutdown();
     }
 
