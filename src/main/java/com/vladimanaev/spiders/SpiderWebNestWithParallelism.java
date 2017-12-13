@@ -180,7 +180,7 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
             LOGGER.warn(String.format("Failed to handle spider's work [%s], error message [%s]", spiderWork, e.getMessage()));
         }
 
-        LOGGER.info("Done crawling URL #" + numOfCrawledURL.get() + 1);
+        LOGGER.info("Done crawling URL #" + (numOfCrawledURL.get() + 1));
         numOfCrawledURL.incrementAndGet();
     }
 
