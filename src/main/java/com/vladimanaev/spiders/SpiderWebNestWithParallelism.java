@@ -58,19 +58,25 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
 
     @Override
     public void crawl(String rootUrl) throws Exception {
-        final long startTime = SpidersUtils.currentTimeMillis();
-        numOfCrawledURL.set(0);
-        LOGGER.info("Crawling root url [" + rootUrl + "]");
-        String rootDomainName = SpidersUtils.getDomainName(rootUrl);
-        if(StringUtils.isEmpty(rootDomainName)) {
-            LOGGER.warn("Unable to extract domain from given root URL");
-            return;
+        String originalThreadName = Thread.currentThread().getName();
+        Thread.currentThread().setName(originalThreadName + " | Queen Nest");
+        try {
+            final long startTime = SpidersUtils.currentTimeMillis();
+            numOfCrawledURL.set(0);
+            LOGGER.info("Crawling root url [" + rootUrl + "]");
+            String rootDomainName = SpidersUtils.getDomainName(rootUrl);
+            if (StringUtils.isEmpty(rootDomainName)) {
+                LOGGER.warn("Unable to extract domain from given root URL");
+                return;
+            }
+
+            nestLoop(rootUrl, rootDomainName);
+
+            LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((SpidersUtils.currentTimeMillis() - startTime) / 1000) + "s]");
+        } finally {
+            Thread.currentThread().setName(originalThreadName);
+            nestExecutorService.shutdownNow();
         }
-
-        Thread.currentThread().setName(Thread.currentThread().getName() + " | Queen Nest");
-        nestLoop(rootUrl, rootDomainName);
-
-        LOGGER.info("Done crawling [" + rootUrl + "], took [" + ((SpidersUtils.currentTimeMillis() - startTime) / 1000) + "s]");
     }
 
     private void nestLoop(String rootUrl, String rootDomainName) {
@@ -171,10 +177,10 @@ public class SpiderWebNestWithParallelism implements SpiderWebNest {
 
             }
         } catch (Exception e) {
-            LOGGER.warn(String.format("Failed to handle spider's work [%s]", spiderWork), e);
+            LOGGER.warn(String.format("Failed to handle spider's work [%s], error message [%s]", spiderWork, e.getMessage()));
         }
 
-        LOGGER.info("Done crawling URL #" + numOfCrawledURL.get());
+        LOGGER.info("Done crawling URL #" + numOfCrawledURL.get() + 1);
         numOfCrawledURL.incrementAndGet();
     }
 
