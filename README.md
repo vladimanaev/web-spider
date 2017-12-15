@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/vladimanaev/web-spider.svg?branch=master)](https://travis-ci.org/vladimanaev/web-spider)
+
 # web-spider
 
 Server side web crawler allowing full page render crawl using HtmlUnit with many configurations and parallelism.
